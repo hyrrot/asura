@@ -11,6 +11,7 @@ This is an alpha version. You should not use it for production servers.
 
 Usage
 =====
+    require 'asura'
     ["hostname1", "hostname2"].each do |host|
       Asura::AsuraCommand.ssh(host, "password") do |ssh|
         ssh.sudo_su("dahlia") do
