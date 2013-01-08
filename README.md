@@ -11,13 +11,16 @@ This is an alpha version. You should not use it for production servers.
 
 Usage
 =====
-    require 'asura'
-    ["hostname1", "hostname2"].each do |host|
-      Asura::AsuraCommand.ssh(host, "password") do |ssh|
-        ssh.sudo_su("dahlia") do
+
+    require 'asura/asura'
+    password = "open_sesame"
+    ["azelea", "orchid"].each do |host|
+      Asura::AsuraCommand.ssh(host, password) do |ssh|
+        ssh.sudo_su("nathan", password) do
           ssh.bash do
-            ssh.send_and_wait_for_prompt "crontab -l"
+            ssh.crontab "-l"
           end
         end
       end
     end
+

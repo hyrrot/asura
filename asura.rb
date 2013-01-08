@@ -14,6 +14,10 @@ module Asura
     
     DEFAULT_PROMPT = /[\$#%]/
 
+    def method_missing(cmd, *args)
+      send_and_wait_prompt("#{cmd} #{args.join(' ')}")
+    end
+
     def initialize(reader, writer, prompt = DEFAULT_PROMPT)
       @reader, @writer = reader, writer
       @prompts = [DEFAULT_PROMPT]
@@ -71,21 +75,21 @@ module Asura
     end
 
     def sudo_su(option,password=nil)
-      self.send_and_wait_prompt("sudo su #{option}")
+      self.send("sudo su #{option}")
       state = :INIT
       until state == :COMPLETED
         case state
           when :INIT
-            result = pty.wait(/[\$#%]|([Pp]assword:)|([Pp]assword for [:alnum:]+: )/)
+            result = self.wait(/([Pp]assword( for [a-zA-Z0-9]+)?: )|([#\$%] )/)
             case result[1]
-              when /[\$#%]/
+              when /[\$#%] /
                 state = :COMPLETED
-              when /([Pp]assword:)|([Pp]assword for [:alnum:]+: )/
+              when /([Pp]assword( for [a-zA-Z0-9]+)?: )/
                 state = :PASSWORD
             end
           when :PASSWORD
             raise RuntimeError unless password
-            pty.send_and_wait_prompt(password)
+            self.send_and_wait_prompt(password)
             state = :COMPLETED
         end
       end
