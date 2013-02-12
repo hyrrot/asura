@@ -8,9 +8,27 @@ require 'debugger'
 
 module Asura
 
+  class IOTee
+    attr_reader :io
+    def initialize(io)
+      @io = io
+    end
+
+    def read
+      result = @io.read
+      STDOUT.print result
+      result
+    end
+
+    def method_missing(action, *args)
+      @io.__send__ action, *args
+    end
+ 
+  end
+
+
   class AsuraCommand
     attr_reader :reader, :writer
-    #attr_accessor :prompt
     
     DEFAULT_PROMPT = /[\$#%]/
 
@@ -46,6 +64,12 @@ module Asura
       wait(pattern,timeout)
     end
 
+    def send_and_capture(str, timeout=9999999)
+      self.writer.puts str
+      wait(str)
+      wait(prompt, timeout)
+    end
+
     def send(str)
       self.writer.puts str
     end
@@ -53,14 +77,16 @@ module Asura
     def wait(str,timeout=9999999)
       result = self.reader.expect(str,timeout=9999999)
       raise RuntimeError unless result #FIXIT : Design of exceptions
-      STDOUT.print(result[0])
+      #STDOUT.print(result[0])
       result
     end
 
+
     def self.session(cmd)
       PTY.getpty(cmd) do |reader, writer|
+        r = IOTee.new(reader)
         writer.sync = true
-        yield self.new(reader, writer)
+        yield self.new(r, writer)
       end
     end
 
@@ -129,8 +155,6 @@ module Asura
           end
         end
         yield self.new(pty.reader, pty.writer)
-        pty.wait(pty.prompt)
-        pty.send "exit"
       end
     end
 
@@ -140,13 +164,8 @@ module Asura
       new_prompt_re = /#{Regexp.escape(new_prompt)}/
       send_and_wait_prompt("TERM=dumb")
       send_and_wait_prompt("export TERM")
-      send_and_wait("PS1=#{new_prompt}", new_prompt_re)
-      wait(new_prompt_re)
-      send_and_wait("export PS1", new_prompt_re)
-      push_prompt(new_prompt_re)
       yield
-      send "exit"
-      pop_prompt
+      self.send "exit"
     end
   end
 end
